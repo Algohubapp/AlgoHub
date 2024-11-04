@@ -1,0 +1,256 @@
+#pragma version 10
+
+smart_contracts.algohub.contract.Algohub.approval_program:
+    txn ApplicationID
+    bnz main_entrypoint@2
+    callsub __init__
+
+main_entrypoint@2:
+    callsub __puya_arc4_router__
+    return
+
+
+// smart_contracts.algohub.contract.Algohub.__puya_arc4_router__() -> uint64:
+__puya_arc4_router__:
+    proto 0 1
+    txn NumAppArgs
+    bz __puya_arc4_router___after_if_else@10
+    method "create_app(account)void"
+    method "pay(pay,account)void"
+    method "hello(string)string"
+    method "opt_in_to(pay,uint64)void"
+    method "supply_asset(axfer,uint64)void"
+    txna ApplicationArgs 0
+    match __puya_arc4_router___create_app_route@2 __puya_arc4_router___pay_route@3 __puya_arc4_router___hello_route@4 __puya_arc4_router___opt_in_to_route@5 __puya_arc4_router___supply_asset_route@6
+    int 0
+    retsub
+
+__puya_arc4_router___create_app_route@2:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    !
+    assert // is creating
+    txna ApplicationArgs 1
+    btoi
+    txnas Accounts
+    callsub create_app
+    int 1
+    retsub
+
+__puya_arc4_router___pay_route@3:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    txn GroupIndex
+    int 1
+    -
+    dup
+    gtxns TypeEnum
+    int pay
+    ==
+    assert // transaction type is pay
+    txna ApplicationArgs 1
+    btoi
+    txnas Accounts
+    callsub pay
+    int 1
+    retsub
+
+__puya_arc4_router___hello_route@4:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    txna ApplicationArgs 1
+    extract 2 0
+    callsub hello
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    byte 0x151f7c75
+    swap
+    concat
+    log
+    int 1
+    retsub
+
+__puya_arc4_router___opt_in_to_route@5:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    txn GroupIndex
+    int 1
+    -
+    dup
+    gtxns TypeEnum
+    int pay
+    ==
+    assert // transaction type is pay
+    txna ApplicationArgs 1
+    callsub opt_in_to
+    int 1
+    retsub
+
+__puya_arc4_router___supply_asset_route@6:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    txn GroupIndex
+    int 1
+    -
+    dup
+    gtxns TypeEnum
+    int axfer
+    ==
+    assert // transaction type is axfer
+    txna ApplicationArgs 1
+    callsub supply_asset
+    int 1
+    retsub
+
+__puya_arc4_router___after_if_else@10:
+    int 0
+    retsub
+
+
+// smart_contracts.algohub.contract.Algohub.create_app(address: bytes) -> void:
+create_app:
+    proto 1 0
+    frame_dig -1
+    len
+    int 32
+    ==
+    assert // Address length is 32 bytes
+    byte "address"
+    frame_dig -1
+    app_global_put
+    retsub
+
+
+// smart_contracts.algohub.contract.Algohub.pay(payment_txn: uint64, receiver: bytes) -> void:
+pay:
+    proto 2 0
+    frame_dig -2
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    assert
+    itxn_begin
+    frame_dig -2
+    gtxns Amount
+    itxn_field Amount
+    frame_dig -1
+    itxn_field Receiver
+    int pay
+    itxn_field TypeEnum
+    int 1000
+    itxn_field Fee
+    itxn_submit
+    retsub
+
+
+// smart_contracts.algohub.contract.Algohub.hello(name: bytes) -> bytes:
+hello:
+    proto 1 1
+    byte "Hello, "
+    frame_dig -1
+    concat
+    retsub
+
+
+// smart_contracts.algohub.contract.Algohub.opt_in_to(mbr_txn: uint64, asset_id: bytes) -> void:
+opt_in_to:
+    proto 2 0
+    global CurrentApplicationAddress
+    frame_dig -1
+    btoi
+    dup
+    cover 2
+    asset_holding_get AssetBalance
+    bury 1
+    !
+    assert
+    frame_dig -2
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    assert
+    frame_dig -2
+    gtxns Amount
+    global AssetOptInMinBalance
+    global MinBalance
+    +
+    ==
+    assert
+    itxn_begin
+    global CurrentApplicationAddress
+    int 0
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    int axfer
+    itxn_field TypeEnum
+    int 0
+    itxn_field Fee
+    itxn_submit
+    retsub
+
+
+// smart_contracts.algohub.contract.Algohub.supply_asset(asset_transfer: uint64, price: bytes) -> void:
+supply_asset:
+    proto 2 0
+    frame_dig -2
+    gtxns AssetReceiver
+    global CurrentApplicationAddress
+    ==
+    assert // Receiver must be current app
+    int 0
+    byte "assets"
+    app_global_get_ex
+    assert // check self.assets exists
+    extract 2 0
+    frame_dig -2
+    gtxns XferAsset
+    itob
+    frame_dig -2
+    gtxns Sender
+    concat
+    frame_dig -1
+    concat
+    concat
+    dup
+    len
+    int 48
+    /
+    itob
+    extract 6 2
+    swap
+    concat
+    byte "assets"
+    swap
+    app_global_put
+    retsub
+
+
+// smart_contracts.algohub.contract.Algohub.__init__() -> void:
+__init__:
+    proto 0 0
+    byte "address"
+    global ZeroAddress
+    app_global_put
+    byte "assets"
+    byte 0x0000
+    app_global_put
+    retsub

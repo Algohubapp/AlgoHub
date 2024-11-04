@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.vscode/**'
+      - '.idea/**'
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  algohub-contracts-validate:
+    name: Run algohub-contracts release
+    secrets: inherit
+    uses: ./.github/workflows/algohub-contracts-ci.yaml
+
+  algohub-contracts-release:
+    name: Run algohub-contracts release
+    secrets: inherit
+    uses: ./.github/workflows/algohub-contracts-cd.yaml
+    needs: algohub-contracts-validate
+
+  algohub-frontend-validate:
+    name: Run algohub-frontend release
+    secrets: inherit
+    uses: ./.github/workflows/algohub-frontend-ci.yaml
+
+  algohub-frontend-release:
+    name: Run algohub-frontend release
+    secrets: inherit
+    uses: ./.github/workflows/algohub-frontend-cd.yaml
+    needs: algohub-frontend-validate
